@@ -1,0 +1,93 @@
+:root {
+  --ink-900: #0c2728;
+  --ink-800: #113432;
+  --ink-700: #17443f;
+  --ink-600: #1f574e;
+  --ink-500: #2c6b5e;
+  --ink-400: #4f8a7b;
+  --ink-200: #b8d0c8;
+  --ink-100: #dce9e4;
+
+  --jade-500: #2e7364;
+  --jade-400: #4c8c7c;
+  --jade-100: #e5f0eb;
+
+  --copper-600: #9b6238;
+  --copper-500: #b5794b;
+  --copper-400: #c99264;
+  --copper-200: #ead3bd;
+  --copper-100: #f6eadd;
+
+  --paper-50: #fdfbf7;
+  --paper-100: #f8f3ea;
+  --paper-200: #f1e9dc;
+  --paper-300: #e7dccb;
+  --line: #e8dfd2;
+  --line-strong: #d9cdbb;
+
+  --text-900: #202d2b;
+  --text-700: #40514e;
+  --text-500: #72827e;
+  --text-400: #94a09d;
+  --text-inverse: #f8f2e8;
+
+  --success: #3e8265;
+  --success-bg: #e7f2ec;
+  --warning: #b47a39;
+  --warning-bg: #fbf0df;
+  --danger: #b55b52;
+  --danger-bg: #faeae7;
+  --info: #507a8e;
+  --info-bg: #eaf1f4;
+
+  --shadow-xs: 0 1px 2px rgba(35, 46, 42, 0.04);
+  --shadow-sm: 0 4px 14px rgba(35, 46, 42, 0.05);
+  --shadow-md: 0 14px 34px rgba(28, 52, 46, 0.08);
+  --shadow-lg: 0 24px 60px rgba(19, 45, 40, 0.14);
+  --shadow-cover: 0 12px 24px rgba(27, 42, 38, 0.18);
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --font-display: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', STSong, SimSun, serif;
+  --font-sans:
+    'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  --sidebar-width: 252px;
+  --sidebar-collapsed: 84px;
+  --header-height: 74px;
+}
+
+.el-button {
+  --el-button-border-radius: 9px;
+}
+
+:root {
+  --el-color-primary: #2e7364;
+  --el-color-primary-light-3: #5b9487;
+  --el-color-primary-light-5: #86afa5;
+  --el-color-primary-light-7: #b4cdc6;
+  --el-color-primary-light-8: #d1e1dc;
+  --el-color-primary-light-9: #edf4f1;
+  --el-color-primary-dark-2: #245c50;
+  --el-color-success: #3e8265;
+  --el-color-warning: #b47a39;
+  --el-color-danger: #b55b52;
+  --el-color-info: #72827e;
+  --el-text-color-primary: #202d2b;
+  --el-text-color-regular: #40514e;
+  --el-text-color-secondary: #72827e;
+  --el-border-color: #e3d8c9;
+  --el-border-color-light: #ebe3d8;
+  --el-border-color-lighter: #f1ebe2;
+  --el-fill-color-blank: #fdfbf7;
+  --el-bg-color: #fdfbf7;
+  --el-bg-color-page: #f6f1e8;
+  --el-font-family: var(--font-sans);
+  --el-border-radius-base: 9px;
+  --el-box-shadow-light: var(--shadow-sm);
+}

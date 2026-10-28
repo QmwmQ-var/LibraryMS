@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+.npm-cache/
+.npm-tmp/
+
+# Build output
+dist/
+frontend/dist/
+target/
+backend/target/
+
+# Runtime & editor files
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+.tmp/
+.edge-profile*/
+.tools/
+
+# Local analysis helpers and screenshots
+tools/
+frontend/tools/
+
+# Database dumps and local credentials
+*.sql.bak
+application-local.yml
