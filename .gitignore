@@ -23,6 +23,7 @@ Thumbs.db
 .tmp/
 .edge-profile*/
 .tools/
+.mysql-data/
 
 # Local analysis helpers and screenshots
 tools/
