@@ -1,8 +1,11 @@
 export const menuGroups = [
   {
+    title: '总览',
+    items: [{ name: 'dashboard', label: '首页', icon: 'HomeFilled', roles: ['ADMIN', 'READER'] }],
+  },
+  {
     title: '阅读服务',
     items: [
-      { name: 'dashboard', label: '首页', icon: 'HomeFilled', roles: ['ADMIN', 'READER'] },
       { name: 'books', label: '馆藏检索', icon: 'Reading', roles: ['READER'] },
       { name: 'my-borrows', label: '我的借阅', icon: 'Collection', roles: ['READER'] },
       { name: 'penalties', label: '我的罚款', icon: 'Wallet', roles: ['READER'] },

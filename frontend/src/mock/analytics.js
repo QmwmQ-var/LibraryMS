@@ -264,7 +264,7 @@ export function buildNotifications(db, user) {
         tone: 'danger',
         title: `${overdue.length} 笔借阅已逾期`,
         description: '建议尽快联系读者办理归还，逾期将按日累计罚款。',
-        path: '/borrow?status=OVERDUE',
+        path: '/circulation?status=OVERDUE',
       })
     }
     if (unpaid.length) {
@@ -273,7 +273,7 @@ export function buildNotifications(db, user) {
         tone: 'warning',
         title: `${unpaid.length} 笔罚款待确认`,
         description: `待收金额 ¥${unpaid.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}，可在罚款管理中处理。`,
-        path: '/penalties',
+        path: '/penalties-manage',
       })
     }
     const lowStock = db.books.filter((book) => book.availableCopies <= 1)
@@ -283,7 +283,7 @@ export function buildNotifications(db, user) {
         tone: 'info',
         title: `${lowStock.length} 种图书可借量不足`,
         description: '可在图书管理中调整馆藏数量或安排补采。',
-        path: '/books?availability=UNAVAILABLE',
+        path: '/books-manage?availability=UNAVAILABLE',
       })
     }
     if (!items.length) {

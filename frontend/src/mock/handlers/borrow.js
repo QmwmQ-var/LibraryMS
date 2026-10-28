@@ -62,11 +62,10 @@ export const borrowRoutes = [
     handler: ({ db, query, user }) => {
       if (user.role !== 'READER') throw new MockError(400, '当前账号不是读者账号')
       refreshOverdue(db)
-      const records = filterRecords(
-        db,
-        db.records.filter((record) => Number(record.readerId) === Number(user.readerId)),
-        query,
+      const ownRecords = db.records.filter(
+        (record) => Number(record.readerId) === Number(user.readerId),
       )
+      const records = filterRecords(db, ownRecords, query)
       records.sort((a, b) => {
         const activeDiff =
           Number(['BORROWED', 'OVERDUE'].includes(b.status)) -
@@ -74,11 +73,12 @@ export const borrowRoutes = [
         if (activeDiff !== 0) return activeDiff
         return b.borrowDate.localeCompare(a.borrowDate)
       })
+      // 页签计数应始终反映读者的全部借阅，不随当前状态筛选变化。
       const summary = {
-        active: records.filter((record) => ['BORROWED', 'OVERDUE'].includes(record.status)).length,
-        overdue: records.filter((record) => record.status === 'OVERDUE').length,
-        returned: records.filter((record) => record.status === 'RETURNED').length,
-        total: db.records.filter((record) => record.readerId === user.readerId).length,
+        active: ownRecords.filter((record) => ['BORROWED', 'OVERDUE'].includes(record.status)).length,
+        overdue: ownRecords.filter((record) => record.status === 'OVERDUE').length,
+        returned: ownRecords.filter((record) => record.status === 'RETURNED').length,
+        total: ownRecords.length,
       }
       return ok({ ...paginate(records, query.page, query.size), summary })
     },
