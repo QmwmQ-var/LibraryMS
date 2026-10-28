@@ -153,12 +153,11 @@ cd backend
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local     # Windows PowerShell: Copy-Item .env.example .env.local
-npm run dev
+npm run dev -- --mode backend
 ```
 
-`.env.example` 已设置 `VITE_USE_MOCK=false`。Vite 的 `server.proxy` 会把 `/api` 转发到
-`http://localhost:8080`，前端代码无需任何修改。
+也可以复制 `.env.example` 为 `.env.local` 后执行 `npm run dev`；两种方式都会关闭 Mock。
+Vite 的 `server.proxy` 会把 `/api` 转发到 `http://localhost:8080`，前端代码无需任何修改。
 
 **4. 关键配置**（`backend/src/main/resources/application.yml`）
 
@@ -174,8 +173,11 @@ npm run dev
 ## 构建与验证
 
 ```bash
-# 前端生产构建
+# 前端演示构建（Mock 开启）
 cd frontend && npm run build
+
+# 前端生产构建（连接真实后端，Mock 关闭）
+cd frontend && npm run build:backend
 
 # 后端测试与打包
 cd backend && ./mvnw test
@@ -222,11 +224,15 @@ cd backend && ./mvnw test
 ## Nginx 部署
 
 ```bash
-cd frontend && npm run build
+cd frontend
+npm run build:backend          # 使用 .env.backend，关闭 Mock，走真实 /api
 # 将 frontend/dist 上传到 /usr/share/nginx/html/libraryms
 # 参考 deploy/nginx.conf 配置 /api/ 反向代理与 try_files fallback
 nginx -t && nginx -s reload
 ```
+
+> `npm run build` 生成的是前端演示包（Mock 开启，适合无后端的静态展示）；
+> 生产部署请务必使用 `npm run build:backend`。
 
 Nginx 仅作为部署扩展性预留，本地开发不需要启动。前端使用 **history 模式**，示例配置已包含
 `try_files $uri $uri/ /index.html;`。
