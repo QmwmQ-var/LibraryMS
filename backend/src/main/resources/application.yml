@@ -1,0 +1,61 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: libraryms
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 数据库连接信息均可通过环境变量覆盖，避免把本机密码写死在代码里
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:libraryms}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+  sql:
+    init:
+      # 建表与种子数据由 database/schema.sql、database/data.sql 手工执行
+      mode: never
+  mvc:
+    problemdetails:
+      enabled: false
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+app:
+  jwt:
+    # 生产环境必须通过 JWT_SECRET 覆盖，长度至少 32 字节
+    secret: ${JWT_SECRET:libraryms-dev-secret-key-change-me-0123456789}
+    expire-minutes: ${JWT_EXPIRE_MINUTES:720}
+    issuer: libraryms
+  cors:
+    # 前端开发服务器来源；部署时按实际域名替换，禁止使用 *
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+      - http://localhost:4173
+      - http://127.0.0.1:4173
+    allow-credentials: true
+    max-age-seconds: 3600
+  penalty:
+    # 逾期罚款 = 逾期天数 × 每日费率
+    rate-per-day: ${PENALTY_RATE:0.5}
+  login:
+    max-fail-attempts: 3
+    lock-minutes: 15
+
+logging:
+  level:
+    root: info
+    com.university.library: info
