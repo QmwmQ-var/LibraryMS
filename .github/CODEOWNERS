@@ -1,0 +1,140 @@
+# 代码所有者（Code Owners）
+#
+# 与 docs/团队分工与协作.md 第 4.1 节「每人管理范围」一一对应：
+#   A 平台与认证   B 馆藏        C 读者        D 流通与罚款      E 数据与交付
+#
+# 右侧的 @member-a … @member-e 是占位账号，必须替换成真实 GitHub 用户名，
+# 否则 PR 不会自动指派评审人。替换方法见 docs/远程协作操作手册.md 第 2 节。
+#
+# 规则自上而下匹配，最后一个命中的规则生效：先写默认兜底，再按目录细化。
+
+# ---------- 默认兜底：平台与认证（A） ----------
+*                                                              @member-a
+
+# ---------- A · 平台与认证 ----------
+/backend/src/main/java/com/university/library/common/          @member-a
+/backend/src/main/resources/                                   @member-a
+/backend/pom.xml                                               @member-a
+/backend/src/main/java/com/university/library/controller/AuthController.java        @member-a
+/backend/src/main/java/com/university/library/service/AuthService.java              @member-a
+/backend/src/main/java/com/university/library/mapper/UserMapper.java                @member-a
+/backend/src/main/java/com/university/library/mapper/LoginLogMapper.java            @member-a
+/backend/src/main/java/com/university/library/mapper/AnnouncementMapper.java        @member-a
+/backend/src/main/java/com/university/library/entity/User.java                      @member-a
+/backend/src/main/java/com/university/library/entity/LoginLog.java                  @member-a
+/backend/src/main/java/com/university/library/entity/Announcement.java              @member-a
+/backend/src/main/java/com/university/library/dto/LoginRequest.java                 @member-a
+/backend/src/main/java/com/university/library/dto/ChangePasswordRequest.java        @member-a
+/backend/src/main/java/com/university/library/vo/LoginVO.java                       @member-a
+/backend/src/main/java/com/university/library/vo/UserVO.java                        @member-a
+/backend/src/main/java/com/university/library/vo/NotificationVO.java                @member-a
+/backend/src/main/java/com/university/library/vo/NotificationItemVO.java            @member-a
+/backend/src/main/java/com/university/library/vo/ActivityVO.java                    @member-a
+/frontend/src/layouts/                                         @member-a
+/frontend/src/router/                                          @member-a
+/frontend/src/stores/                                          @member-a
+/frontend/src/assets/styles/                                   @member-a
+/frontend/src/components/common/                               @member-a
+/frontend/src/views/login/                                     @member-a
+/frontend/src/views/error/                                     @member-a
+/frontend/src/api/http.js                                      @member-a
+/frontend/src/api/auth.js                                      @member-a
+/frontend/src/mock/index.js                                    @member-a
+/frontend/src/mock/utils.js                                    @member-a
+/frontend/src/mock/handlers/auth.js                            @member-a
+/deploy/                                                       @member-a
+/.github/                                                      @member-a
+
+# ---------- B · 馆藏 ----------
+/backend/src/main/java/com/university/library/controller/BookController.java        @member-b
+/backend/src/main/java/com/university/library/controller/CategoryController.java    @member-b
+/backend/src/main/java/com/university/library/service/BookService.java              @member-b
+/backend/src/main/java/com/university/library/service/CategoryService.java          @member-b
+/backend/src/main/java/com/university/library/mapper/BookMapper.java                @member-b
+/backend/src/main/java/com/university/library/mapper/BookCategoryMapper.java        @member-b
+/backend/src/main/java/com/university/library/entity/Book.java                      @member-b
+/backend/src/main/java/com/university/library/entity/BookCategory.java              @member-b
+/backend/src/main/java/com/university/library/dto/BookRequest.java                  @member-b
+/backend/src/main/java/com/university/library/dto/CategoryRequest.java              @member-b
+/backend/src/main/java/com/university/library/vo/BookVO.java                        @member-b
+/backend/src/main/java/com/university/library/vo/CategoryVO.java                    @member-b
+/frontend/src/views/book/                                      @member-b
+/frontend/src/views/category/                                  @member-b
+/frontend/src/components/book/                                 @member-b
+/frontend/src/api/book.js                                      @member-b
+/frontend/src/mock/handlers/books.js                           @member-b
+
+# ---------- C · 读者 ----------
+/backend/src/main/java/com/university/library/controller/ReaderController.java      @member-c
+/backend/src/main/java/com/university/library/service/ReaderService.java            @member-c
+/backend/src/main/java/com/university/library/mapper/ReaderMapper.java              @member-c
+/backend/src/main/java/com/university/library/entity/Reader.java                    @member-c
+/backend/src/main/java/com/university/library/dto/ReaderRequest.java                @member-c
+/backend/src/main/java/com/university/library/dto/CardStatusRequest.java            @member-c
+/backend/src/main/java/com/university/library/vo/ReaderVO.java                      @member-c
+/backend/src/main/java/com/university/library/vo/ReaderDetailVO.java                @member-c
+/backend/src/main/java/com/university/library/vo/ReaderOverviewVO.java              @member-c
+/backend/src/main/java/com/university/library/vo/ReaderSummaryVO.java               @member-c
+/frontend/src/views/reader/                                    @member-c
+/frontend/src/views/profile/                                   @member-c
+/frontend/src/api/reader.js                                    @member-c
+/frontend/src/mock/handlers/readers.js                         @member-c
+
+# ---------- D · 流通与罚款（含预约） ----------
+/backend/src/main/java/com/university/library/controller/BorrowRecordController.java   @member-d
+/backend/src/main/java/com/university/library/controller/PenaltyController.java        @member-d
+/backend/src/main/java/com/university/library/controller/ReservationController.java    @member-d
+/backend/src/main/java/com/university/library/service/BorrowService.java               @member-d
+/backend/src/main/java/com/university/library/service/PenaltyService.java              @member-d
+/backend/src/main/java/com/university/library/service/ReservationService.java          @member-d
+/backend/src/main/java/com/university/library/service/OverdueService.java              @member-d
+/backend/src/main/java/com/university/library/mapper/BorrowRecordMapper.java           @member-d
+/backend/src/main/java/com/university/library/mapper/PenaltyMapper.java                @member-d
+/backend/src/main/java/com/university/library/mapper/ReservationMapper.java            @member-d
+/backend/src/main/java/com/university/library/entity/BorrowRecord.java                 @member-d
+/backend/src/main/java/com/university/library/entity/Penalty.java                      @member-d
+/backend/src/main/java/com/university/library/entity/Reservation.java                  @member-d
+/backend/src/main/java/com/university/library/dto/BorrowRequest.java                   @member-d
+/backend/src/main/java/com/university/library/dto/ReservationRequest.java              @member-d
+/backend/src/main/java/com/university/library/vo/BorrowRecordVO.java                   @member-d
+/backend/src/main/java/com/university/library/vo/BorrowRecordDetailVO.java             @member-d
+/backend/src/main/java/com/university/library/vo/BorrowResultVO.java                   @member-d
+/backend/src/main/java/com/university/library/vo/BorrowSummaryVO.java                  @member-d
+/backend/src/main/java/com/university/library/vo/ReturnResultVO.java                   @member-d
+/backend/src/main/java/com/university/library/vo/PenaltyVO.java                        @member-d
+/backend/src/main/java/com/university/library/vo/PenaltySummaryVO.java                 @member-d
+/backend/src/main/java/com/university/library/vo/ReservationVO.java                    @member-d
+/backend/src/main/java/com/university/library/vo/ReservationSummaryVO.java             @member-d
+/frontend/src/views/borrow/                                    @member-d
+/frontend/src/views/penalty/                                   @member-d
+/frontend/src/views/reservation/                               @member-d
+/frontend/src/api/borrow.js                                    @member-d
+/frontend/src/api/penalty.js                                   @member-d
+/frontend/src/api/reservation.js                               @member-d
+/frontend/src/mock/handlers/borrow.js                          @member-d
+/frontend/src/mock/handlers/penalties.js                       @member-d
+/frontend/src/mock/handlers/reservations.js                    @member-d
+
+# ---------- E · 数据与交付 ----------
+/backend/src/main/java/com/university/library/controller/StatsController.java       @member-e
+/backend/src/main/java/com/university/library/controller/DashboardController.java   @member-e
+/backend/src/main/java/com/university/library/service/StatsService.java             @member-e
+/backend/src/main/java/com/university/library/service/DashboardService.java         @member-e
+/backend/src/main/java/com/university/library/mapper/model/                          @member-e
+/backend/src/main/java/com/university/library/vo/Stats*.java                         @member-e
+/backend/src/main/java/com/university/library/vo/Dashboard*.java                     @member-e
+/backend/src/main/java/com/university/library/vo/AdminOverviewVO.java                @member-e
+/backend/src/main/java/com/university/library/vo/RankingVO.java                      @member-e
+/backend/src/main/java/com/university/library/vo/TrendsVO.java                       @member-e
+/frontend/src/views/dashboard/                                 @member-e
+/frontend/src/views/stats/                                     @member-e
+/frontend/src/api/stats.js                                     @member-e
+/frontend/src/mock/analytics.js                                @member-e
+/frontend/src/mock/db.js                                       @member-e
+/frontend/src/mock/seed.js                                     @member-e
+/frontend/src/mock/handlers/dashboard.js                       @member-e
+/frontend/src/mock/handlers/stats.js                           @member-e
+/database/                                                     @member-e
+/docs/                                                         @member-e
+/README.md                                                     @member-e
+/CONTRIBUTING.md                                               @member-a
