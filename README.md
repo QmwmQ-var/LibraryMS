@@ -96,7 +96,7 @@ LibraryMS/
 | 仅前端演示 | Node.js ≥ 20.19（建议 22 LTS）、npm |
 | 全栈运行 | 上述 + Java 17+、Maven 3.9+（或使用 `mvnw`）、MySQL 8.0+ |
 
-### 方式一：前端演示（推荐先看，无需数据库）
+### 方式一：前端Mock演示（仅供演示，无需数据库）
 
 ```bash
 cd frontend
@@ -117,7 +117,7 @@ npm run dev
 
 > 演示数据可随时从登录页底部「重置演示数据」恢复。
 
-### 方式二：连接真实后端
+### 方式二：连接真实后端(开发阶段使用)
 
 **1. 初始化 MySQL**
 
@@ -125,10 +125,12 @@ npm run dev
 mysql -u root -p < database/schema.sql
 mysql -u root -p < database/data.sql
 ```
+然后在数据库界面勾选`libraryms`架构
 
 **2. 启动后端**
 
-默认连接 `localhost:3306/libraryms`，账号 `root`、空密码。推荐用环境变量覆盖，不要修改仓库默认配置：
+默认连接 `localhost:3306/libraryms`，账号 `root`、空密码。推荐用环境变量覆盖，不要修改仓库默认配置  
+可选以下命令方式，或在idea中设置环境变量并点击绿色箭头运行
 
 ```powershell
 # PowerShell
@@ -136,6 +138,14 @@ $env:DB_PASSWORD="你的数据库密码"
 $env:JWT_SECRET="请替换为至少32字节的随机字符串"
 cd backend
 .\mvnw.cmd spring-boot:run
+```
+
+```cmd
+:: Windows CMD
+set DB_PASSWORD=你的数据库密码
+set JWT_SECRET=请替换为至少32字节的随机字符串
+cd backend
+mvnw.cmd spring-boot:run
 ```
 
 ```bash
