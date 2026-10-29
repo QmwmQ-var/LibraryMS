@@ -51,6 +51,7 @@ public class ReaderService {
 
     private final ReaderMapper readerMapper;
     private final UserMapper userMapper;
+    private final ReservationService reservationService;
     private final BorrowRecordMapper borrowRecordMapper;
     private final PenaltyMapper penaltyMapper;
     private final PasswordEncoder passwordEncoder;
@@ -242,6 +243,10 @@ public class ReaderService {
                 .in(BorrowRecord::getStatus, List.of(BorrowStatus.BORROWED, BorrowStatus.OVERDUE)));
         if (active != null && active > 0) {
             throw BusinessException.badRequest("该读者尚有 " + active + " 本图书未归还，无法删除");
+        }
+        long activeReservations = reservationService.countActiveForReader(id);
+        if (activeReservations > 0) {
+            throw BusinessException.badRequest("该读者仍有 " + activeReservations + " 个有效预约，请先取消");
         }
         readerMapper.deleteById(id);
         User user = userMapper.selectById(reader.getUserId());

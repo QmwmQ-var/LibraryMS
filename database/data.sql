@@ -14,6 +14,7 @@ USE `libraryms`;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
+TRUNCATE TABLE `reservation`;
 TRUNCATE TABLE `penalty`;
 TRUNCATE TABLE `borrow_record`;
 TRUNCATE TABLE `login_log`;
@@ -74,7 +75,8 @@ VALUES
 (8, '社会科学', 'C', '#876d4b', '社会学、教育学、法律与公共议题', 0, DATE_SUB(NOW(), INTERVAL 500 DAY));
 
 -- ----------------------------------------------------------------------------
--- 图书：available_copies 已扣除 11 笔当前在借
+-- 图书：available_copies 已扣除当前在借与预约留书。
+-- 第 33 本《雪国》用于预约演示：馆藏 3 = 在借 2 + 已到书留书 1。
 -- ----------------------------------------------------------------------------
 INSERT INTO `book` (`id`, `isbn`, `title`, `author`, `publisher`, `category_id`, `total_copies`, `available_copies`, `publish_year`, `price`, `location`, `description`, `rating`, `reservation_count`, `deleted`, `created_at`)
 VALUES
@@ -109,12 +111,13 @@ VALUES
 (29, '9787532763658', '局外人', '阿尔贝·加缪', '上海译文出版社', 1, 3, 3, 2015, 35.00, 'A-04-02', '冷峻短小的存在主义经典，叩问荒诞世界中的自由与选择。', 4.3, 0, 0, DATE_SUB(NOW(), INTERVAL 331 DAY)),
 (30, '9787536692930', '三体', '刘慈欣', '重庆出版社', 1, 7, 6, 2008, 52.00, 'A-05-01', '地球文明与三体文明的首度接触，中国科幻的里程碑之作。', 4.3, 0, 0, DATE_SUB(NOW(), INTERVAL 330 DAY)),
 (31, '9787544258609', '白夜行', '东野圭吾', '南海出版公司', 1, 4, 4, 2013, 49.00, 'A-05-03', '一桩悬案贯穿十九年，在黑暗中书写互为光影的两个人。', 4.3, 0, 0, DATE_SUB(NOW(), INTERVAL 329 DAY)),
-(32, '9787213086939', '明朝那些事儿', '当年明月', '浙江人民出版社', 3, 6, 6, 2017, 108.00, 'C-03-01', '用鲜活叙事重述明朝三百年，让历史人物与制度变迁可感可触。', 4.3, 0, 0, DATE_SUB(NOW(), INTERVAL 328 DAY));
+(32, '9787213086939', '明朝那些事儿', '当年明月', '浙江人民出版社', 3, 6, 6, 2017, 108.00, 'C-03-01', '用鲜活叙事重述明朝三百年，让历史人物与制度变迁可感可触。', 4.3, 0, 0, DATE_SUB(NOW(), INTERVAL 328 DAY)),
+(33, '9787544274665', '雪国', '川端康成', '南海出版公司', 1, 3, 0, 2022, 49.00, 'A-06-02', '穿过县界长长的隧道便是雪国。以洁净克制的文字书写虚无与美，日本文学经典。', 4.6, 2, 0, DATE_SUB(NOW(), INTERVAL 327 DAY));
 
 -- ----------------------------------------------------------------------------
 -- 借阅记录
 --   borrow_offset / due_offset / return_offset 都是“距今天数”（正数表示过去，
---   负数表示未来）；id 1-25 为历史已归还记录，id 26-36 为当前在借/逾期记录。
+--   负数表示未来）；id 1-25 为历史已归还记录，id 26-38 为当前在借/逾期记录。
 -- ----------------------------------------------------------------------------
 INSERT INTO `borrow_record` (`id`, `reader_id`, `book_id`, `borrow_date`, `due_date`, `return_date`, `status`, `renew_count`, `operator_id`, `returned_by`, `created_at`)
 SELECT
@@ -167,6 +170,8 @@ FROM (
     UNION ALL SELECT 34, 9, 28, 24, -6, NULL, 'BORROWED', 0
     UNION ALL SELECT 35, 10, 14, 48, -12, NULL, 'BORROWED', 0
     UNION ALL SELECT 36, 5, 12, 28, -2, NULL, 'BORROWED', 0
+    UNION ALL SELECT 37, 8, 33, 12, -18, NULL, 'BORROWED', 0
+    UNION ALL SELECT 38, 10, 33, 22, -8, NULL, 'BORROWED', 0
 ) AS x
 ORDER BY x.`id`;
 
@@ -178,6 +183,16 @@ SET br.`reader_name` = r.`name`,
     br.`reader_no`   = r.`student_no`,
     br.`book_title`  = b.`title`,
     br.`book_isbn`   = b.`isbn`;
+
+-- ----------------------------------------------------------------------------
+-- 预约演示：
+--   《雪国》3 册中 2 册在借、1 册已到书留给林知夏（READY，48 小时内领取）；
+--   陈屿排在第二位（PENDING）。book.reservation_count = 2。
+-- ----------------------------------------------------------------------------
+INSERT INTO `reservation` (`id`, `reader_id`, `book_id`, `status`, `requested_at`, `ready_at`, `expire_at`, `closed_at`, `borrow_record_id`, `cancel_reason`, `reader_name`, `reader_no`, `book_title`, `book_isbn`, `created_at`, `updated_at`)
+VALUES
+(1, 1, 33, 'READY', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), NULL, NULL, NULL, '林知夏', '2023001', '雪国', '9787544274665', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(2, 2, 33, 'PENDING', DATE_SUB(NOW(), INTERVAL 2 DAY), NULL, NULL, NULL, NULL, NULL, '陈屿', '2022008', '雪国', '9787544274665', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY));
 
 -- ----------------------------------------------------------------------------
 -- 罚款：仅对已归还且逾期的记录生成，每笔借阅最多一条

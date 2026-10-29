@@ -51,6 +51,11 @@ app:
   penalty:
     # 逾期罚款 = 逾期天数 × 每日费率
     rate-per-day: ${PENALTY_RATE:0.5}
+  reservation:
+    # 预约到书后为读者保留的小时数
+    ready-hold-hours: ${RESERVATION_HOLD_HOURS:48}
+    # 每位读者最多同时持有的有效预约数
+    max-active-per-reader: 5
   login:
     max-fail-attempts: 3
     lock-minutes: 15

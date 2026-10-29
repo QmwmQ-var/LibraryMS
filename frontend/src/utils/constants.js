@@ -69,6 +69,22 @@ export const PENALTY_STATUS_OPTIONS = Object.entries(PENALTY_STATUS).map(([value
   label: config.label,
 }))
 
+export const RESERVATION_STATUS = {
+  PENDING: { label: '排队中', tone: 'blue' },
+  READY: { label: '已到书', tone: 'amber' },
+  FULFILLED: { label: '已借出', tone: 'green' },
+  CANCELLED: { label: '已取消', tone: 'gray' },
+  EXPIRED: { label: '已过期', tone: 'red' },
+}
+
+export const RESERVATION_STATUS_OPTIONS = Object.entries(RESERVATION_STATUS).map(
+  ([value, config]) => ({ value, label: config.label }),
+)
+
+export const RESERVATION_ACTIVE_STATUSES = ['PENDING', 'READY']
+export const RESERVATION_HOLD_HOURS = 48
+export const MAX_ACTIVE_RESERVATIONS = 5
+
 export const FINE_RATE = 0.5
 export const MAX_RENEW_COUNT = 1
 

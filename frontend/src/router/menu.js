@@ -8,6 +8,7 @@ export const menuGroups = [
     items: [
       { name: 'books', label: '馆藏检索', icon: 'Reading', roles: ['READER'] },
       { name: 'my-borrows', label: '我的借阅', icon: 'Collection', roles: ['READER'] },
+      { name: 'my-reservations', label: '我的预约', icon: 'Calendar', roles: ['READER'] },
       { name: 'penalties', label: '我的罚款', icon: 'Wallet', roles: ['READER'] },
     ],
   },
@@ -23,6 +24,7 @@ export const menuGroups = [
     title: '流通与数据',
     items: [
       { name: 'circulation', label: '流通办理', icon: 'Switch', roles: ['ADMIN'] },
+      { name: 'reservations-manage', label: '预约管理', icon: 'Calendar', roles: ['ADMIN'] },
       { name: 'penalties-manage', label: '罚款管理', icon: 'Wallet', roles: ['ADMIN'] },
       { name: 'stats', label: '统计报表', icon: 'TrendCharts', roles: ['ADMIN'] },
     ],

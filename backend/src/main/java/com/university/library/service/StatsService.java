@@ -68,6 +68,7 @@ public class StatsService {
     private final ViewService viewService;
     private final OverdueService overdueService;
     private final PenaltyProperties penaltyProperties;
+    private final ReservationService reservationService;
 
     // ---------------------------------------------------------------------
     // 概览
@@ -127,6 +128,9 @@ public class StatsService {
         overview.setLowStockCount(books.stream()
                 .filter(book -> book.getAvailableCopies() != null && book.getAvailableCopies() <= 1).count());
         overview.setRangeBorrowCount(rangeBorrowCount);
+        var reservationSummary = reservationService.adminSummary();
+        overview.setPendingReservations(reservationSummary.getPendingCount());
+        overview.setReadyReservations(reservationSummary.getReadyCount());
         return overview;
     }
 
@@ -184,6 +188,9 @@ public class StatsService {
         overview.setFavoriteCategory(favorite == null ? "暂无" : favorite.getKey());
         overview.setFavoriteCategoryCount(favorite == null ? 0L : favorite.getValue());
         overview.setCardStatus(reader == null ? "ACTIVE" : reader.getCardStatus());
+        var reservationSummary = reservationService.readerSummary(principal.readerId());
+        overview.setPendingReservations(reservationSummary.getPendingCount());
+        overview.setReadyReservations(reservationSummary.getReadyCount());
         return overview;
     }
 
@@ -416,6 +423,12 @@ public class StatsService {
                     .filter(record -> BorrowStatus.OVERDUE.equals(record.getStatus())).count();
             long lowStock = books().stream()
                     .filter(book -> book.getAvailableCopies() != null && book.getAvailableCopies() <= 1).count();
+            var reservationSummary = reservationService.adminSummary();
+            if (reservationSummary.getPendingCount() != null && reservationSummary.getPendingCount() > 0) {
+                items.add(new NotificationItemVO("reservations", "info",
+                        reservationSummary.getPendingCount() + " 位读者正在等待预约",
+                        "可查看到书、排队与领取状态，及时处理留书。", "/reservations-manage"));
+            }
             if (overdue > 0) {
                 items.add(new NotificationItemVO("overdue", "danger", overdue + " 笔借阅已逾期",
                         "建议尽快联系读者办理归还，逾期将按日累计罚款。", "/circulation?status=OVERDUE"));
@@ -463,6 +476,12 @@ public class StatsService {
             if (!unpaid.isEmpty()) {
                 items.add(new NotificationItemVO("my-fines", "warning", "有 " + unpaid.size() + " 笔罚款待缴纳",
                         "合计 ¥" + ViewService.money(sumPenalty(unpaid)).toPlainString() + "。", "/penalties"));
+            }
+            var reservationSummary = reservationService.readerSummary(readerId);
+            if (reservationSummary.getReadyCount() != null && reservationSummary.getReadyCount() > 0) {
+                items.add(new NotificationItemVO("my-reservations", "success",
+                        "有 " + reservationSummary.getReadyCount() + " 本预约图书已到书",
+                        "请及时到馆借阅，留书将在 48 小时后过期。", "/my-reservations"));
             }
             if (items.isEmpty()) {
                 items.add(new NotificationItemVO("reader-calm", "success", "借阅状态良好",
