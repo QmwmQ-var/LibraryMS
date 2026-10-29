@@ -156,6 +156,16 @@ mysql -u root -p < database/data.sql
 ```
 然后在数据库界面勾选`libraryms`架构
 
+> **旧库升级（v1.0 → 当前版本）**：早期创建的 `libraryms` 库没有 `reservation` 表。如果直接运行新代码，
+> 日志会出现 `SQLSyntaxErrorException: Table 'libraryms.reservation' doesn't exist`，仪表盘、通知、统计接口返回 500。
+> 执行一次增量迁移即可，不必重建数据库：
+>
+> ```bash
+> mysql -u root -p < database/migrations/20261029_add_reservation.sql
+> ```
+>
+> 迁移只创建空表；想看到《雪国》的演示预约数据，重新导入 `database/data.sql`（会重置为种子数据）。
+
 **2. 启动后端**
 
 默认连接 `localhost:3306/libraryms`，账号 `root`、空密码。推荐用环境变量覆盖，不要修改仓库默认配置  
