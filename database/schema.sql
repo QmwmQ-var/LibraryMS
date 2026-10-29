@@ -21,6 +21,7 @@ USE `libraryms`;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS `reservation`;
 DROP TABLE IF EXISTS `penalty`;
 DROP TABLE IF EXISTS `borrow_record`;
 DROP TABLE IF EXISTS `login_log`;
@@ -187,6 +188,44 @@ CREATE TABLE `borrow_record` (
     CONSTRAINT `chk_borrow_status` CHECK (`status` IN ('BORROWED', 'RETURNED', 'OVERDUE')),
     CONSTRAINT `chk_borrow_renew` CHECK (`renew_count` >= 0)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '借阅记录表';
+
+-- ----------------------------------------------------------------------------
+-- 预约表：读者对无可借副本的图书排队；到书后保留 48 小时
+-- 状态：PENDING 排队中 / READY 已到书待领取 / FULFILLED 已借出
+--       CANCELLED 已取消 / EXPIRED 已过期
+-- 说明：book.reservation_count 缓存 PENDING + READY 的数量，用于续借拦截；
+--       READY 的副本从 available_copies 中扣除（被视为“已留书”）。
+-- ----------------------------------------------------------------------------
+CREATE TABLE `reservation` (
+    `id`               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `reader_id`        BIGINT       NOT NULL COMMENT '预约读者',
+    `book_id`          BIGINT       NOT NULL COMMENT '预约图书',
+    `status`           VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING / READY / FULFILLED / CANCELLED / EXPIRED',
+    `requested_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '预约时间（排队依据）',
+    `ready_at`         DATETIME     DEFAULT NULL COMMENT '到书时间',
+    `expire_at`        DATETIME     DEFAULT NULL COMMENT '保留截止时间',
+    `closed_at`        DATETIME     DEFAULT NULL COMMENT '完成/取消/过期时间',
+    `borrow_record_id` BIGINT       DEFAULT NULL COMMENT '履约生成的借阅记录',
+    `cancel_reason`    VARCHAR(100) DEFAULT NULL COMMENT '取消原因',
+    `reader_name`      VARCHAR(50)  DEFAULT NULL COMMENT '读者姓名快照',
+    `reader_no`        VARCHAR(20)  DEFAULT NULL COMMENT '读者学号快照',
+    `book_title`       VARCHAR(200) DEFAULT NULL COMMENT '书名快照',
+    `book_isbn`        VARCHAR(20)  DEFAULT NULL COMMENT 'ISBN 快照',
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_reservation_reader_status` (`reader_id`, `status`, `requested_at`),
+    KEY `idx_reservation_book_status` (`book_id`, `status`, `requested_at`),
+    KEY `idx_reservation_expire` (`status`, `expire_at`),
+    KEY `idx_reservation_borrow_record` (`borrow_record_id`),
+    CONSTRAINT `fk_reservation_reader` FOREIGN KEY (`reader_id`) REFERENCES `reader` (`id`)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `fk_reservation_book` FOREIGN KEY (`book_id`) REFERENCES `book` (`id`)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `fk_reservation_borrow_record` FOREIGN KEY (`borrow_record_id`) REFERENCES `borrow_record` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `chk_reservation_status` CHECK (`status` IN ('PENDING', 'READY', 'FULFILLED', 'CANCELLED', 'EXPIRED'))
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '图书预约表';
 
 -- ----------------------------------------------------------------------------
 -- 罚款表：与借阅记录一对一（record_id 唯一），保证还书幂等不重复生成

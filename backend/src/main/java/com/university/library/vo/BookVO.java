@@ -47,5 +47,7 @@ public class BookVO {
 
     private Long activeLoans;
 
+    private Integer reservationCount;
+
     private Boolean available;
 }

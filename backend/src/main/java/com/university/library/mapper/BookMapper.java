@@ -35,4 +35,16 @@ public interface BookMapper extends BaseMapper<Book> {
                AND available_copies < total_copies
             """)
     int incrementAvailable(@Param("id") Long id);
+
+    /**
+     * 原子调整有效预约数，保证不会出现负数。
+     */
+    @Update("""
+            UPDATE book
+               SET reservation_count = GREATEST(0, reservation_count + #{delta}),
+                   updated_at = NOW()
+             WHERE id = #{id}
+               AND deleted = 0
+            """)
+    int adjustReservationCount(@Param("id") Long id, @Param("delta") int delta);
 }
