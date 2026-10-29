@@ -62,6 +62,18 @@ const routes = [
         meta: { title: '我的借阅', roles: ['READER'], eyebrow: 'My Reading' },
       },
       {
+        path: 'my-reservations',
+        name: 'my-reservations',
+        component: () => import('@/views/reservation/MyReservationsView.vue'),
+        meta: { title: '我的预约', roles: ['READER'], eyebrow: 'Reservations' },
+      },
+      {
+        path: 'reservations-manage',
+        name: 'reservations-manage',
+        component: () => import('@/views/reservation/ReservationManageView.vue'),
+        meta: { title: '预约管理', roles: ['ADMIN'], eyebrow: 'Reservations' },
+      },
+      {
         path: 'penalties',
         name: 'penalties',
         component: () => import('@/views/penalty/PenaltyView.vue'),

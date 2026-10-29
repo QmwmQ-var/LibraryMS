@@ -33,4 +33,8 @@ public class ReaderOverviewVO {
     private Long favoriteCategoryCount;
 
     private String cardStatus;
+
+    private Long pendingReservations;
+
+    private Long readyReservations;
 }

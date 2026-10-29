@@ -51,6 +51,7 @@ class BorrowServiceTest {
     private PenaltyMapper penaltyMapper;
     private ViewService viewService;
     private OverdueService overdueService;
+    private ReservationService reservationService;
     private BorrowService borrowService;
 
     private final UserPrincipal admin = new UserPrincipal(1L, "admin", "ADMIN", null);
@@ -64,12 +65,13 @@ class BorrowServiceTest {
         penaltyMapper = mock(PenaltyMapper.class);
         viewService = mock(ViewService.class);
         overdueService = mock(OverdueService.class);
+        reservationService = mock(ReservationService.class);
 
         PenaltyProperties penaltyProperties = new PenaltyProperties();
         penaltyProperties.setRatePerDay(new BigDecimal("0.50"));
 
         borrowService = new BorrowService(borrowRecordMapper, bookMapper, readerMapper, penaltyMapper,
-                viewService, overdueService, penaltyProperties);
+                viewService, overdueService, penaltyProperties, reservationService);
 
         when(viewService.toRecordVO(any(BorrowRecord.class))).thenAnswer(invocation -> {
             BorrowRecord record = invocation.getArgument(0);

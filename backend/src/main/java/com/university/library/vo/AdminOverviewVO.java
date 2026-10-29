@@ -39,4 +39,8 @@ public class AdminOverviewVO {
     private Long lowStockCount;
 
     private Long rangeBorrowCount;
+
+    private Long pendingReservations;
+
+    private Long readyReservations;
 }

@@ -1,6 +1,6 @@
 import { seedDatabase } from './seed'
 
-const STORAGE_KEY = 'libraryms_mock_db_v1'
+const STORAGE_KEY = 'libraryms_mock_db_v2'
 let databaseCache = null
 
 const canUseStorage = () => typeof window !== 'undefined' && window.localStorage
@@ -11,7 +11,7 @@ function readFromStorage() {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
-    return parsed?.version === 1 ? parsed : null
+    return parsed?.version === 2 ? parsed : null
   } catch {
     return null
   }

@@ -5,18 +5,31 @@ defineProps({
   book: { type: Object, required: true },
   mode: { type: String, default: 'browse' },
   borrowDisabled: { type: Boolean, default: false },
+  reservation: { type: Object, default: null },
 })
 
-const emit = defineEmits(['detail', 'borrow', 'edit', 'remove'])
+const emit = defineEmits(['detail', 'borrow', 'reserve', 'edit', 'remove'])
 </script>
 
 <template>
   <article class="book-card" @click="emit('detail', book)">
     <div class="book-card__cover">
       <BookCover :book="book" size="md" />
-      <span class="book-card__availability" :class="{ 'is-empty': book.availableCopies <= 0 }">
+      <span
+        class="book-card__availability"
+        :class="{
+          'is-empty': book.availableCopies <= 0,
+          'is-ready': reservation?.status === 'READY',
+        }"
+      >
         <span />
-        {{ book.availableCopies > 0 ? '可借' : '借完' }}
+        {{
+          reservation?.status === 'READY'
+            ? '预约到书'
+            : book.availableCopies > 0
+              ? '可借'
+              : '借完'
+        }}
       </span>
     </div>
 
@@ -62,15 +75,46 @@ const emit = defineEmits(['detail', 'borrow', 'edit', 'remove'])
           </template>
           <template v-else>
             <button class="detail-link" @click="emit('detail', book)">详情</button>
-            <el-button
-              type="primary"
-              size="small"
-              class="borrow-btn"
-              :disabled="book.availableCopies <= 0 || borrowDisabled"
-              @click="emit('borrow', book)"
-            >
-              {{ book.availableCopies > 0 ? '借阅' : '暂无馆藏' }}
-            </el-button>
+            <template v-if="reservation?.status === 'READY'">
+              <el-button
+                type="primary"
+                size="small"
+                class="borrow-btn is-ready"
+                :disabled="borrowDisabled"
+                @click="emit('borrow', book)"
+              >
+                到书领取
+              </el-button>
+            </template>
+            <template v-else-if="reservation?.status === 'PENDING'">
+              <span class="reserved-hint">
+                <el-icon><Clock /></el-icon>
+                已预约 · 第 {{ reservation.queuePosition || 1 }} 位
+              </span>
+            </template>
+            <template v-else-if="book.availableCopies > 0">
+              <el-button
+                type="primary"
+                size="small"
+                class="borrow-btn"
+                :disabled="borrowDisabled"
+                @click="emit('borrow', book)"
+              >
+                借阅
+              </el-button>
+            </template>
+            <template v-else>
+              <el-button
+                type="primary"
+                plain
+                size="small"
+                class="borrow-btn"
+                :disabled="borrowDisabled"
+                @click="emit('reserve', book)"
+              >
+                预约
+              </el-button>
+            </template>
           </template>
         </div>
       </div>
@@ -137,6 +181,11 @@ const emit = defineEmits(['detail', 'borrow', 'edit', 'remove'])
 
 .book-card__availability.is-empty {
   color: var(--text-400);
+}
+
+.book-card__availability.is-ready {
+  color: var(--copper-600);
+  background: rgba(255, 248, 238, 0.94);
 }
 
 .book-card__body {
@@ -312,6 +361,22 @@ const emit = defineEmits(['detail', 'borrow', 'edit', 'remove'])
   padding: 0 12px;
   border-radius: 7px;
   font-size: 10px;
+}
+
+.borrow-btn.is-ready {
+  color: #fffaf2;
+  background: var(--copper-600);
+  border-color: var(--copper-600);
+  box-shadow: 0 5px 12px rgba(155, 98, 56, 0.18);
+}
+
+.reserved-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--copper-600);
+  font-size: 8px;
+  white-space: nowrap;
 }
 
 @media (max-width: 480px) {

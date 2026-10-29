@@ -10,6 +10,7 @@ import {
   todayString,
   unpaidPenalties,
 } from './utils'
+import { refreshReservations, reservationSummary } from './reservations'
 
 const inPeriod = (value, start = null, end = null) => {
   if (!value) return false
@@ -21,8 +22,10 @@ const inPeriod = (value, start = null, end = null) => {
 
 export function buildOverview(db, user, { startDate = null, endDate = null } = {}) {
   refreshOverdue(db)
+  refreshReservations(db)
 
   if (user?.role === 'READER') {
+    const reservationStats = reservationSummary(db, user.readerId)
     const reader = db.readers.find((item) => item.id === user.readerId)
     const active = activeRecords(db, user.readerId)
     const overdue = active.filter((record) => record.status === 'OVERDUE')
@@ -54,9 +57,12 @@ export function buildOverview(db, user, { startDate = null, endDate = null } = {
       favoriteCategory: favorite?.[0] || '暂无',
       favoriteCategoryCount: favorite?.[1] || 0,
       cardStatus: reader?.cardStatus || 'ACTIVE',
+      pendingReservations: reservationStats.pendingCount,
+      readyReservations: reservationStats.readyCount,
     }
   }
 
+  const reservationStats = reservationSummary(db)
   const totalCopies = db.books.reduce((sum, book) => sum + book.totalCopies, 0)
   const availableCopies = db.books.reduce((sum, book) => sum + book.availableCopies, 0)
   const active = activeRecords(db)
@@ -100,6 +106,8 @@ export function buildOverview(db, user, { startDate = null, endDate = null } = {
     pendingFineAmount: Number(unpaid.reduce((sum, item) => sum + item.amount, 0).toFixed(2)),
     lowStockCount: db.books.filter((book) => book.availableCopies <= 1).length,
     rangeBorrowCount: rangeRecords.length,
+    pendingReservations: reservationStats.pendingCount,
+    readyReservations: reservationStats.readyCount,
   }
 }
 
@@ -256,8 +264,19 @@ export function buildNotifications(db, user) {
   refreshOverdue(db)
   const items = []
   if (user.role === 'ADMIN') {
+    refreshReservations(db)
     const overdue = overdueRecords(db)
     const unpaid = unpaidPenalties(db)
+    const reservationStats = reservationSummary(db)
+    if (reservationStats.pendingCount) {
+      items.push({
+        id: 'reservations',
+        tone: 'info',
+        title: `${reservationStats.pendingCount} 位读者正在等待预约`,
+        description: '可查看到书、排队与领取状态，及时处理留书。',
+        path: '/reservations-manage',
+      })
+    }
     if (overdue.length) {
       items.push({
         id: 'overdue',
@@ -296,6 +315,8 @@ export function buildNotifications(db, user) {
       })
     }
   } else {
+    refreshReservations(db)
+    const reservationStats = reservationSummary(db, user.readerId)
     const active = activeRecords(db, user.readerId)
     const overdue = active.filter((record) => record.status === 'OVERDUE')
     const dueSoon = active.filter((record) => {
@@ -328,6 +349,15 @@ export function buildNotifications(db, user) {
         title: `有 ${unpaid.length} 笔罚款待缴纳`,
         description: `合计 ¥${unpaid.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}。`,
         path: '/penalties',
+      })
+    }
+    if (reservationStats.readyCount) {
+      items.push({
+        id: 'my-reservations',
+        tone: 'success',
+        title: `有 ${reservationStats.readyCount} 本预约图书已到书`,
+        description: '请及时到馆借阅，留书将在 48 小时后过期。',
+        path: '/my-reservations',
       })
     }
     if (!items.length) {

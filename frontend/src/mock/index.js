@@ -7,6 +7,7 @@ import { borrowRoutes } from './handlers/borrow'
 import { penaltyRoutes } from './handlers/penalties'
 import { statsRoutes } from './handlers/stats'
 import { dashboardRoutes } from './handlers/dashboard'
+import { reservationRoutes } from './handlers/reservations'
 
 /**
  * 内置 Mock API。
@@ -23,6 +24,7 @@ const routeModules = [
   ...penaltyRoutes,
   ...statsRoutes,
   ...dashboardRoutes,
+  ...reservationRoutes,
 ]
 
 function compilePath(pattern) {
