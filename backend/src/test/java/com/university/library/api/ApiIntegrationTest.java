@@ -48,7 +48,7 @@ class ApiIntegrationTest {
         mockMvc.perform(get("/api/books").header(AUTH, bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.total").value(3))
+                .andExpect(jsonPath("$.data.total").value(4))
                 .andExpect(jsonPath("$.data.records[0].categoryName").exists())
                 .andExpect(jsonPath("$.data.records[0].available").value(true));
 
@@ -56,12 +56,12 @@ class ApiIntegrationTest {
         mockMvc.perform(get("/api/stats/overview").header(AUTH, bearer(adminToken)))
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.role").value("ADMIN"))
-                .andExpect(jsonPath("$.data.totalTitles").value(3));
+                .andExpect(jsonPath("$.data.totalTitles").value(4));
 
         // 管理员读者列表 + summary
         mockMvc.perform(get("/api/readers").header(AUTH, bearer(adminToken)))
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.summary.total").value(1));
+                .andExpect(jsonPath("$.data.summary.total").value(2));
 
         // 管理员通知跳转路径必须命中真实路由，避免点击后 403/404
         mockMvc.perform(get("/api/notifications").header(AUTH, bearer(adminToken)))
@@ -150,6 +150,98 @@ class ApiIntegrationTest {
         mockMvc.perform(get("/api/notifications").header(AUTH, bearer(adminToken)))
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.items").isArray());
+
+        // ================= 预约闭环 =================
+        // 《雪国》在种子中被陈屿借走（馆藏 1，可借 0），林知夏可排队预约。
+        mockMvc.perform(post("/api/reservations")
+                        .header(AUTH, bearer(readerToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookId\":4}"))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.queuePosition").value(1))
+                .andExpect(jsonPath("$.data.bookTitle").value("雪国"));
+
+        // 有可借副本的图书不允许预约
+        mockMvc.perform(post("/api/reservations")
+                        .header(AUTH, bearer(readerToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookId\":2}"))
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("当前有可借副本，请直接借阅"));
+
+        // 重复预约拦截
+        mockMvc.perform(post("/api/reservations")
+                        .header(AUTH, bearer(readerToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookId\":4}"))
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(get("/api/reservations/my").header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.summary.pendingCount").value(1))
+                .andExpect(jsonPath("$.data.records[0].status").value("PENDING"));
+
+        // 管理员看到全馆预约队列
+        mockMvc.perform(get("/api/reservations").header(AUTH, bearer(adminToken)))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.summary.pendingCount").value(1));
+
+        // 管理员为陈屿归还《雪国》：队首自动变为 READY，库存保持 0（留书）
+        mockMvc.perform(post("/api/borrow-records/3/return").header(AUTH, bearer(adminToken)))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.record.status").value("RETURNED"));
+        mockMvc.perform(get("/api/reservations/my").header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.data.records[0].status").value("READY"))
+                .andExpect(jsonPath("$.data.records[0].remainingHours").isNumber());
+        mockMvc.perform(get("/api/books/4").header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.data.availableCopies").value(0));
+
+        // 林知夏借阅已到书的预约：不再扣库存；预约变为 FULFILLED
+        MvcResult readyBorrow = mockMvc.perform(post("/api/borrow-records")
+                        .header(AUTH, bearer(readerToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookId\":4}"))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.record.status").value("BORROWED"))
+                .andReturn();
+        JsonNode readyBorrowJson = readBody(readyBorrow);
+        long readyRecordId = readyBorrowJson.path("data").path("record").path("id").asLong();
+        mockMvc.perform(get("/api/reservations/my").param("status", "ACTIVE")
+                        .header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.data.records.length()").value(0));
+        mockMvc.perform(get("/api/reservations/my")
+                        .header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.data.summary.fulfilledCount").value(1))
+                .andExpect(jsonPath("$.data.summary.readyCount").value(0));
+        mockMvc.perform(get("/api/books/4").header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.data.availableCopies").value(0))
+                .andExpect(jsonPath("$.data.reservationCount").value(0));
+
+        // 归还后恢复库存
+        mockMvc.perform(post("/api/borrow-records/" + readyRecordId + "/return")
+                        .header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(get("/api/books/4").header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.data.availableCopies").value(1));
+
+        // 陈屿预约《算法导论》后取消，验证取消与权限
+        String secondReaderToken = login("2023002", "reader123");
+        MvcResult cancelReservation = mockMvc.perform(post("/api/reservations")
+                        .header(AUTH, bearer(secondReaderToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookId\":3}"))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andReturn();
+        long cancelId = readBody(cancelReservation).path("data").path("id").asLong();
+        mockMvc.perform(post("/api/reservations/" + cancelId + "/cancel")
+                        .header(AUTH, bearer(secondReaderToken)))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+        mockMvc.perform(post("/api/reservations/" + cancelId + "/cancel")
+                        .header(AUTH, bearer(readerToken)))
+                .andExpect(jsonPath("$.code").value(403));
     }
 
     @Test

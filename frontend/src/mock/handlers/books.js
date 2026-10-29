@@ -49,8 +49,14 @@ const validateBook = (db, payload, currentId = null) => {
 
   if (currentId !== null) {
     const activeCount = activeRecords(db).filter((record) => record.bookId === currentId).length
-    if (payload.totalCopies < activeCount) {
-      throw new MockError(400, `当前仍有 ${activeCount} 本在借，馆藏总量不能低于在借数量`)
+    const readyCount = db.reservations.filter(
+      (item) => item.bookId === currentId && item.status === 'READY',
+    ).length
+    if (payload.totalCopies < activeCount + readyCount) {
+      throw new MockError(
+        400,
+        `当前有 ${activeCount} 本在借、${readyCount} 本已到书留书，馆藏总量不能低于两者之和`,
+      )
     }
   }
 }
@@ -112,6 +118,7 @@ export const bookRoutes = [
         ...payload,
         id: nextId(db.books),
         availableCopies: payload.totalCopies,
+        reservationCount: 0,
         rating: 4.5,
         createdAt: nowIso(),
       }
@@ -130,8 +137,11 @@ export const bookRoutes = [
       const payload = parseBookPayload(body)
       validateBook(db, payload, book.id)
       const activeCount = activeRecords(db).filter((record) => record.bookId === book.id).length
+      const readyCount = db.reservations.filter(
+        (item) => item.bookId === book.id && item.status === 'READY',
+      ).length
       Object.assign(book, payload, {
-        availableCopies: payload.totalCopies - activeCount,
+        availableCopies: payload.totalCopies - activeCount - readyCount,
       })
       persistDatabase()
       return ok(bookView(db, book), '图书信息已更新')
@@ -147,6 +157,12 @@ export const bookRoutes = [
       const activeCount = activeRecords(db).filter((record) => record.bookId === book.id).length
       if (activeCount > 0) {
         throw new MockError(400, `该书仍有 ${activeCount} 本未归还，无法删除`)
+      }
+      const activeReservations = db.reservations.filter(
+        (item) => item.bookId === book.id && ['PENDING', 'READY'].includes(item.status),
+      ).length
+      if (activeReservations > 0) {
+        throw new MockError(400, `该书仍有 ${activeReservations} 个有效预约，请先处理`)
       }
       const index = db.books.findIndex((item) => item.id === book.id)
       db.books.splice(index, 1)

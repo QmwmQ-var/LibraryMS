@@ -49,6 +49,7 @@ public class BookService {
     private final BorrowRecordMapper borrowRecordMapper;
     private final ViewService viewService;
     private final OverdueService overdueService;
+    private final ReservationService reservationService;
 
     /**
      * 图书列表：书名/作者/ISBN/出版社/分类名关键字 + 分类 + 可借状态筛选，支持多种排序。
@@ -131,11 +132,13 @@ public class BookService {
         applyRequest(book, request, id);
 
         long activeCount = countActiveLoans(id);
-        if (book.getTotalCopies() < activeCount) {
+        long readyReservations = reservationService.countReadyForBook(id);
+        if (book.getTotalCopies() < activeCount + readyReservations) {
             throw BusinessException.badRequest(
-                    "当前仍有 " + activeCount + " 本在借，馆藏总量不能低于在借数量");
+                    "当前有 " + activeCount + " 本在借、" + readyReservations
+                            + " 本已到书留书，馆藏总量不能低于两者之和");
         }
-        book.setAvailableCopies((int) (book.getTotalCopies() - activeCount));
+        book.setAvailableCopies((int) (book.getTotalCopies() - activeCount - readyReservations));
         bookMapper.updateById(book);
         return OperationResult.of(viewService.toBookVO(book), "图书信息已更新");
     }
@@ -152,6 +155,10 @@ public class BookService {
         long activeCount = countActiveLoans(id);
         if (activeCount > 0) {
             throw BusinessException.badRequest("该书仍有 " + activeCount + " 本未归还，无法删除");
+        }
+        long activeReservations = reservationService.countActiveForBook(id);
+        if (activeReservations > 0) {
+            throw BusinessException.badRequest("该书仍有 " + activeReservations + " 个有效预约，请先处理");
         }
         bookMapper.deleteById(id);
         return OperationResult.ok("图书已删除");

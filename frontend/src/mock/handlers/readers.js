@@ -194,6 +194,12 @@ export const readerRoutes = [
       if (active.length > 0) {
         throw new MockError(400, `该读者尚有 ${active.length} 本图书未归还，无法删除`)
       }
+      const activeReservations = db.reservations.filter(
+        (item) => item.readerId === reader.id && ['PENDING', 'READY'].includes(item.status),
+      ).length
+      if (activeReservations > 0) {
+        throw new MockError(400, `该读者仍有 ${activeReservations} 个有效预约，请先取消`)
+      }
       const index = db.readers.indexOf(reader)
       db.readers.splice(index, 1)
       const linkedUser = db.users.find((item) => item.readerId === reader.id)

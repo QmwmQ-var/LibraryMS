@@ -19,6 +19,7 @@ import com.university.library.entity.Book;
 import com.university.library.entity.BorrowRecord;
 import com.university.library.entity.Penalty;
 import com.university.library.entity.Reader;
+import com.university.library.entity.Reservation;
 import com.university.library.mapper.BookMapper;
 import com.university.library.mapper.BorrowRecordMapper;
 import com.university.library.mapper.PenaltyMapper;
@@ -66,6 +67,7 @@ public class BorrowService {
     private final ViewService viewService;
     private final OverdueService overdueService;
     private final PenaltyProperties penaltyProperties;
+    private final ReservationService reservationService;
 
     // ---------------------------------------------------------------------
     // 查询
@@ -173,6 +175,7 @@ public class BorrowService {
     @Transactional
     public OperationResult<BorrowResultVO> borrow(UserPrincipal principal, BorrowRequest request) {
         overdueService.refresh();
+        reservationService.refreshExpired();
 
         Long readerId;
         if (principal.isReader()) {
@@ -207,8 +210,11 @@ public class BorrowService {
         if (book == null) {
             throw BusinessException.notFound("图书不存在或已下架");
         }
-        if (book.getAvailableCopies() == null || book.getAvailableCopies() <= 0) {
-            throw BusinessException.badRequest("该书暂无可借副本，请选择其他图书");
+        // READY 预约已经为读者留出一册（库存中已扣除），到馆借阅时不再扣库存。
+        Reservation readyReservation = reservationService.findReadyReservation(reader.getId(), book.getId());
+        if (readyReservation == null
+                && (book.getAvailableCopies() == null || book.getAvailableCopies() <= 0)) {
+            throw BusinessException.badRequest("该书暂无可借副本，请选择其他图书或预约");
         }
 
         ReaderType readerType = ReaderType.from(reader.getType());
@@ -223,10 +229,12 @@ public class BorrowService {
             throw BusinessException.badRequest("该读者已借阅此书，请勿重复借阅");
         }
 
-        // 条件更新：仍有库存才会成功，避免并发超借
-        int updated = bookMapper.decrementAvailable(book.getId());
-        if (updated == 0) {
-            throw BusinessException.badRequest("该书暂无可借副本，请选择其他图书");
+        // READY 预约使用已留书的副本；普通借阅用条件更新抢库存，避免并发超借
+        if (readyReservation == null) {
+            int updated = bookMapper.decrementAvailable(book.getId());
+            if (updated == 0) {
+                throw BusinessException.badRequest("该书暂无可借副本，请选择其他图书或预约");
+            }
         }
 
         LocalDate today = LocalDate.now();
@@ -243,6 +251,10 @@ public class BorrowService {
         record.setBookTitle(book.getTitle());
         record.setBookIsbn(book.getIsbn());
         borrowRecordMapper.insert(record);
+
+        if (readyReservation != null) {
+            reservationService.fulfill(readyReservation, record.getId());
+        }
 
         BorrowRecordVO recordVO = viewService.toRecordVO(record);
         ReaderVO readerVO = viewService.toReaderVO(reader);
@@ -283,8 +295,9 @@ public class BorrowService {
         record.setReturnedBy(principal.userId());
         borrowRecordMapper.updateById(record);
 
-        // 恢复可借数量（幂等：不超过馆藏总量）
+        // 恢复可借数量（幂等：不超过馆藏总量），若有排队预约则直接留书并提升队首。
         bookMapper.incrementAvailable(record.getBookId());
+        reservationService.promoteNextReady(record.getBookId());
 
         Penalty penalty = penaltyMapper.selectOne(
                 Wrappers.<Penalty>lambdaQuery().eq(Penalty::getRecordId, record.getId()));

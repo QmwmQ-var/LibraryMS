@@ -2,6 +2,11 @@ import dayjs from 'dayjs'
 import { nextId, persistDatabase } from '../db'
 import { READER_TYPES } from '@/utils/constants'
 import {
+  findReadyReservation,
+  promoteNextReservation,
+  refreshReservations,
+} from '../reservations'
+import {
   MockError,
   activeRecords,
   bookView,
@@ -113,6 +118,7 @@ export const borrowRoutes = [
     path: '/borrow-records',
     handler: ({ db, body, user }) => {
       refreshOverdue(db)
+      refreshReservations(db)
       const readerId = user.role === 'READER' ? user.readerId : Number(body.readerId)
       if (user.role === 'READER' && body.readerId && Number(body.readerId) !== user.readerId) {
         throw new MockError(403, '读者只能为自己办理借阅')
@@ -129,8 +135,10 @@ export const borrowRoutes = [
 
       const book = db.books.find((item) => item.id === Number(body.bookId))
       if (!book) throw new MockError(404, '图书不存在或已下架')
-      if (book.availableCopies <= 0) {
-        throw new MockError(400, '该书暂无可借副本，请选择其他图书')
+      // READY 预约已经为该读者留出一册（库存中已扣除），借阅时不再扣库存。
+      const readyReservation = findReadyReservation(db, reader.id, book.id)
+      if (!readyReservation && book.availableCopies <= 0) {
+        throw new MockError(400, '该书暂无可借副本，请选择其他图书或预约')
       }
 
       const config = READER_TYPES[reader.type]
@@ -166,7 +174,15 @@ export const borrowRoutes = [
       }
 
       db.records.push(record)
-      book.availableCopies -= 1
+      if (readyReservation) {
+        readyReservation.status = 'FULFILLED'
+        readyReservation.borrowRecordId = record.id
+        readyReservation.closedAt = nowIso()
+        readyReservation.updatedAt = readyReservation.closedAt
+        book.reservationCount = Math.max(0, (book.reservationCount || 0) - 1)
+      } else {
+        book.availableCopies -= 1
+      }
       persistDatabase()
       return ok(
         {
@@ -203,6 +219,8 @@ export const borrowRoutes = [
       const book = db.books.find((item) => item.id === record.bookId)
       if (book) {
         book.availableCopies = Math.min(book.totalCopies, book.availableCopies + 1)
+        // 有排队预约时，归还副本直接留书并提升队首。
+        promoteNextReservation(db, book.id)
       }
 
       let penalty = db.penalties.find((item) => item.recordId === record.id)

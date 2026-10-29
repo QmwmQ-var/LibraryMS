@@ -15,10 +15,15 @@ import {
   updateBook,
 } from '@/api/book'
 import { borrowBook } from '@/api/borrow'
+import {
+  cancelReservation,
+  createReservation,
+  getMyReservations,
+} from '@/api/reservation'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { formatCurrency } from '@/utils/format'
-import { READER_TYPES } from '@/utils/constants'
+import { READER_TYPES, RESERVATION_STATUS } from '@/utils/constants'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,6 +44,10 @@ const deletingId = ref(null)
 const borrowLoading = ref(false)
 const borrowResult = ref(null)
 const borrowResultVisible = ref(false)
+const reservationLoading = ref(false)
+const reservationResult = ref(null)
+const reservationResultVisible = ref(false)
+const myReservations = ref([])
 const isAdmin = computed(() => auth.isAdmin)
 const isManagement = computed(() => route.meta.management === true)
 
@@ -75,6 +84,16 @@ const totalAvailableCopies = computed(() =>
   books.value.reduce((sum, book) => sum + book.availableCopies, 0),
 )
 
+const reservationMap = computed(
+  () => new Map(myReservations.value.map((item) => [Number(item.bookId), item])),
+)
+
+const reservationFor = (book) => reservationMap.value.get(Number(book?.id)) || null
+
+const detailReservation = computed(() =>
+  selectedBook.value ? reservationFor(selectedBook.value) : null,
+)
+
 const rules = {
   title: [{ required: true, message: '请输入书名', trigger: 'blur' }],
   author: [{ required: true, message: '请输入作者', trigger: 'blur' }],
@@ -88,6 +107,19 @@ const rules = {
   ],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
   totalCopies: [{ required: true, message: '请设置馆藏总量', trigger: 'change' }],
+}
+
+const loadMyReservations = async () => {
+  if (isAdmin.value) {
+    myReservations.value = []
+    return
+  }
+  try {
+    const result = await getMyReservations({ status: 'ACTIVE', page: 1, size: 100 })
+    myReservations.value = result.records || []
+  } catch (error) {
+    console.warn('[LibraryMS] 预约状态加载失败', error)
+  }
 }
 
 const loadCategories = async () => {
@@ -138,7 +170,7 @@ const openBookFromQuery = async () => {
 
 onMounted(async () => {
   syncFromRoute()
-  await Promise.all([loadCategories(), loadBooks()])
+  await Promise.all([loadCategories(), loadBooks(), loadMyReservations()])
   await openBookFromQuery()
 })
 
@@ -279,7 +311,7 @@ const confirmBorrow = async (book) => {
     borrowResult.value = result
     borrowResultVisible.value = true
     detailVisible.value = false
-    await loadBooks()
+    await Promise.all([loadBooks(), loadMyReservations()])
     await auth.fetchProfile()
     appStore.fetchNotifications()
   } catch (error) {
@@ -290,6 +322,63 @@ const confirmBorrow = async (book) => {
     borrowLoading.value = false
   }
 }
+
+const confirmReserve = async (book) => {
+  if (!auth.reader) {
+    ElMessage.warning('仅读者账号可以预约图书')
+    return
+  }
+  if (auth.reader.cardStatus !== 'ACTIVE') {
+    ElMessage.warning('借阅证状态异常，暂不能预约，请联系图书馆管理员')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `《${book.title}》当前无可借副本。预约后将进入等候队列，到书后为您保留 48 小时。`,
+      '预约图书',
+      { confirmButtonText: '确认预约', cancelButtonText: '再想想', type: 'info' },
+    )
+    reservationLoading.value = true
+    const result = await createReservation(book.id)
+    reservationResult.value = result
+    reservationResultVisible.value = true
+    detailVisible.value = false
+    await Promise.all([loadBooks(), loadMyReservations()])
+    await auth.fetchProfile()
+    appStore.fetchNotifications()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error?.message || '预约失败')
+    }
+  } finally {
+    reservationLoading.value = false
+  }
+}
+
+const confirmCancelReservation = async (reservation) => {
+  if (!reservation) return
+  try {
+    await ElMessageBox.confirm(
+      `确认取消《${reservation.bookTitle}》的预约吗？取消后需重新排队。`,
+      '取消预约',
+      { confirmButtonText: '取消预约', cancelButtonText: '保留', type: 'warning' },
+    )
+    reservationLoading.value = true
+    await cancelReservation(reservation.id)
+    ElMessage.success('预约已取消')
+    await Promise.all([loadBooks(), loadMyReservations()])
+    appStore.fetchNotifications()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(error?.message || '取消失败')
+    }
+  } finally {
+    reservationLoading.value = false
+  }
+}
+
+const reservationTone = (status) => RESERVATION_STATUS[status]?.tone || 'gray'
+const reservationLabel = (status) => RESERVATION_STATUS[status]?.label || status
 
 const goMyBorrows = () => {
   borrowResultVisible.value = false
@@ -335,10 +424,16 @@ const borrowLimitLabel = computed(() => {
           <el-icon><Plus /></el-icon>
           新增图书
         </el-button>
-        <el-button v-else plain @click="router.push({ name: 'my-borrows' })">
-          <el-icon><Collection /></el-icon>
-          我的借阅
-        </el-button>
+        <template v-else>
+          <el-button plain @click="router.push({ name: 'my-reservations' })">
+            <el-icon><Calendar /></el-icon>
+            我的预约
+          </el-button>
+          <el-button plain @click="router.push({ name: 'my-borrows' })">
+            <el-icon><Collection /></el-icon>
+            我的借阅
+          </el-button>
+        </template>
       </template>
     </PageHeader>
 
@@ -392,8 +487,10 @@ const borrowLimitLabel = computed(() => {
             :book="book"
             :mode="isAdmin ? 'manage' : 'browse'"
             :borrow-disabled="!auth.reader || auth.reader.cardStatus !== 'ACTIVE'"
+            :reservation="reservationFor(book)"
             @detail="openDetail"
             @borrow="confirmBorrow"
+            @reserve="confirmReserve"
             @edit="openEdit"
             @remove="confirmRemove"
           />
@@ -446,15 +543,29 @@ const borrowLimitLabel = computed(() => {
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column v-else label="操作" width="94" fixed="right">
+          <el-table-column v-else label="操作" width="106" fixed="right">
             <template #default="{ row }">
               <el-button
+                v-if="reservationFor(row)?.status === 'READY'"
                 text
                 size="small"
-                :disabled="row.availableCopies <= 0"
+                @click.stop="confirmBorrow(row)"
+              >
+                到书领取
+              </el-button>
+              <span v-else-if="reservationFor(row)?.status === 'PENDING'" class="table-reserved">
+                已预约
+              </span>
+              <el-button
+                v-else-if="row.availableCopies > 0"
+                text
+                size="small"
                 @click.stop="confirmBorrow(row)"
               >
                 借阅
+              </el-button>
+              <el-button v-else text size="small" @click.stop="confirmReserve(row)">
+                预约
               </el-button>
             </template>
           </el-table-column>
@@ -491,7 +602,17 @@ const borrowLimitLabel = computed(() => {
             <BookCover :book="selectedBook" size="lg" />
           </div>
           <div class="book-detail__intro">
-            <span class="pill pill--copper">{{ selectedBook.categoryName }}</span>
+            <div class="book-detail__badges">
+              <span class="pill pill--copper">{{ selectedBook.categoryName }}</span>
+              <span
+                v-if="detailReservation"
+                class="pill"
+                :class="`pill--${reservationTone(detailReservation.status)}`"
+              >
+                <span class="pill__dot" />
+                我的预约 · {{ reservationLabel(detailReservation.status) }}
+              </span>
+            </div>
             <h2>{{ selectedBook.title }}</h2>
             <p class="book-detail__author">{{ selectedBook.author }}</p>
             <div class="book-detail__rating">
@@ -543,6 +664,10 @@ const borrowLimitLabel = computed(() => {
             <span class="meta-label">在借副本</span>
             <span class="meta-value">{{ selectedBook.activeLoans }} 本</span>
           </div>
+          <div>
+            <span class="meta-label">预约队列</span>
+            <span class="meta-value">{{ selectedBook.reservationCount || 0 }} 人</span>
+          </div>
         </div>
 
         <div class="book-detail__section">
@@ -573,15 +698,53 @@ const borrowLimitLabel = computed(() => {
           <template v-else>
             <div class="book-detail__hint">
               <el-icon><InfoFilled /></el-icon>
-              借阅后请按期归还
+              <template v-if="detailReservation?.status === 'READY'">
+                已为您留书，请在 {{ detailReservation.remainingHours ?? 48 }} 小时内到馆借阅
+              </template>
+              <template v-else-if="detailReservation?.status === 'PENDING'">
+                已进入预约队列，当前第 {{ detailReservation.queuePosition || 1 }} 位
+              </template>
+              <template v-else-if="selectedBook.availableCopies > 0">
+                借阅后请按期归还
+              </template>
+              <template v-else>
+                当前无可借副本，预约到书后将保留 48 小时
+              </template>
             </div>
             <el-button
+              v-if="detailReservation?.status === 'PENDING'"
+              :loading="reservationLoading"
+              @click="confirmCancelReservation(detailReservation)"
+            >
+              取消预约
+            </el-button>
+            <el-button
+              v-else-if="detailReservation?.status === 'READY'"
               type="primary"
-              :disabled="selectedBook.availableCopies <= 0"
+              class="is-copper"
               :loading="borrowLoading"
               @click="confirmBorrow(selectedBook)"
             >
-              {{ selectedBook.availableCopies > 0 ? '立即借阅' : '暂无库存' }}
+              到书领取
+            </el-button>
+            <el-button
+              v-else-if="selectedBook.availableCopies > 0"
+              type="primary"
+              :disabled="!auth.reader || auth.reader.cardStatus !== 'ACTIVE'"
+              :loading="borrowLoading"
+              @click="confirmBorrow(selectedBook)"
+            >
+              立即借阅
+            </el-button>
+            <el-button
+              v-else
+              type="primary"
+              plain
+              :loading="reservationLoading"
+              :disabled="!auth.reader || auth.reader.cardStatus !== 'ACTIVE'"
+              @click="confirmReserve(selectedBook)"
+            >
+              预约此书
             </el-button>
           </template>
         </div>
@@ -658,6 +821,28 @@ const borrowLimitLabel = computed(() => {
           {{ form.id ? '保存修改' : '确认入库' }}
         </el-button>
       </template>
+    </el-dialog>
+
+    <el-dialog v-model="reservationResultVisible" width="420px" class="reservation-result-dialog">
+      <div v-if="reservationResult" class="reservation-success">
+        <div class="reservation-success__seal"><el-icon><Calendar /></el-icon></div>
+        <div class="reservation-success__eyebrow">RESERVATION CONFIRMED</div>
+        <h2>预约成功</h2>
+        <p class="reservation-success__book">《{{ reservationResult.bookTitle }}》</p>
+        <div class="reservation-success__queue">
+          <span>当前队列位置</span>
+          <strong>第 {{ reservationResult.queuePosition || 1 }} 位</strong>
+        </div>
+        <p class="reservation-success__notice">
+          到书后系统将保留 48 小时，请留意消息提醒并及时到馆借阅。
+        </p>
+        <div class="reservation-success__actions">
+          <el-button plain @click="reservationResultVisible = false">继续浏览</el-button>
+          <el-button type="primary" @click="router.push({ name: 'my-reservations' })">
+            查看我的预约
+          </el-button>
+        </div>
+      </div>
     </el-dialog>
 
     <el-dialog v-model="borrowResultVisible" width="420px" class="borrow-result-dialog">
@@ -908,6 +1093,13 @@ const borrowLimitLabel = computed(() => {
   flex-direction: column;
   min-width: 0;
   padding-top: 4px;
+}
+
+.book-detail__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 .book-detail__intro .pill {
@@ -1190,6 +1382,104 @@ const borrowLimitLabel = computed(() => {
 }
 
 .borrow-result__actions .el-button {
+  flex: 1;
+}
+
+.table-reserved {
+  color: var(--copper-600);
+  font-size: 8.5px;
+}
+
+.is-copper {
+  --el-button-bg-color: var(--copper-600);
+  --el-button-border-color: var(--copper-600);
+  --el-button-hover-bg-color: var(--copper-500);
+  --el-button-hover-border-color: var(--copper-500);
+  --el-button-active-bg-color: #87512e;
+  --el-button-active-border-color: #87512e;
+}
+
+.reservation-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px 2px;
+  text-align: center;
+}
+
+.reservation-success__seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 55px;
+  height: 55px;
+  margin-bottom: 13px;
+  border: 1px solid rgba(181, 121, 75, 0.25);
+  border-radius: 50%;
+  color: var(--copper-600);
+  background: var(--copper-100);
+  font-size: 24px;
+}
+
+.reservation-success__eyebrow {
+  color: var(--copper-600);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.15em;
+}
+
+.reservation-success h2 {
+  margin-top: 6px;
+  color: var(--ink-800);
+  font-family: var(--font-display);
+  font-size: 24px;
+}
+
+.reservation-success__book {
+  margin-top: 6px;
+  color: var(--text-500);
+  font-family: var(--font-display);
+  font-size: 12px;
+}
+
+.reservation-success__queue {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  margin-top: 17px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper-100);
+}
+
+.reservation-success__queue span {
+  color: var(--text-400);
+  font-size: 8px;
+}
+
+.reservation-success__queue strong {
+  color: var(--copper-600);
+  font-family: var(--font-display);
+  font-size: 19px;
+}
+
+.reservation-success__notice {
+  margin-top: 12px;
+  color: var(--text-400);
+  font-size: 8.5px;
+  line-height: 1.7;
+}
+
+.reservation-success__actions {
+  display: flex;
+  width: 100%;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.reservation-success__actions .el-button {
   flex: 1;
 }
 

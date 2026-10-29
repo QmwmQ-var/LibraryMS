@@ -57,6 +57,7 @@ const rawBooks = [
   [30, '9787536692930', '三体', '刘慈欣', '重庆出版社', 1, 7, 2008, 52, 'A-05-01', '地球文明与三体文明的首度接触，中国科幻的里程碑之作。'],
   [31, '9787544258609', '白夜行', '东野圭吾', '南海出版公司', 1, 4, 2013, 49, 'A-05-03', '一桩悬案贯穿十九年，在黑暗中书写互为光影的两个人。'],
   [32, '9787213086939', '明朝那些事儿', '当年明月', '浙江人民出版社', 3, 6, 2017, 108, 'C-03-01', '用鲜活叙事重述明朝三百年，让历史人物与制度变迁可感可触。'],
+  [33, '9787544274665', '雪国', '川端康成', '南海出版公司', 1, 3, 2022, 49, 'A-06-02', '穿过县界长长的隧道便是雪国。以洁净克制的文字书写虚无与美，日本文学经典。'],
 ]
 
 const rawReaders = [
@@ -88,6 +89,7 @@ function buildBooks() {
       location,
       description,
       rating: Number((4.3 + ((id * 7) % 7) / 10).toFixed(1)),
+      reservationCount: 0,
       createdAt: isoOffset(-360 + id),
     }),
   )
@@ -257,6 +259,8 @@ function buildRecordsAndPenalties(books, readers) {
     [9, 28, -24, 6, 0, 'BORROWED'],
     [10, 14, -48, 12, 0, 'BORROWED'],
     [5, 12, -28, 2, 0, 'BORROWED'],
+    [8, 33, -12, 18, 0, 'BORROWED'],
+    [10, 33, -22, 8, 0, 'BORROWED'],
   ]
 
   for (const [readerId, bookId, borrowOffset, dueOffset, renewCount, status] of activeLoans) {
@@ -321,6 +325,47 @@ export function seedDatabase() {
   const readers = buildReaders(users)
   const { records, penalties } = buildRecordsAndPenalties(books, readers)
 
+  // 预约演示：《雪国》3 册中 2 册在借，1 册已到书留给林知夏，陈屿排队等候。
+  const demoBook = books.find((book) => book.id === 33)
+  demoBook.reservationCount = 2
+  demoBook.availableCopies -= 1
+  const reservations = [
+    {
+      id: 1,
+      readerId: 1,
+      bookId: 33,
+      status: 'READY',
+      requestedAt: dayjs().subtract(3, 'day').hour(10).minute(15).toISOString(),
+      readyAt: dayjs().subtract(1, 'day').hour(9).minute(30).toISOString(),
+      expireAt: dayjs().add(1, 'day').hour(9).minute(30).toISOString(),
+      closedAt: null,
+      borrowRecordId: null,
+      cancelReason: null,
+      readerName: readers.find((reader) => reader.id === 1)?.name,
+      readerNo: readers.find((reader) => reader.id === 1)?.studentNo,
+      bookTitle: demoBook.title,
+      bookIsbn: demoBook.isbn,
+      createdAt: dayjs().subtract(3, 'day').hour(10).minute(15).toISOString(),
+    },
+    {
+      id: 2,
+      readerId: 2,
+      bookId: 33,
+      status: 'PENDING',
+      requestedAt: dayjs().subtract(2, 'day').hour(14).minute(20).toISOString(),
+      readyAt: null,
+      expireAt: null,
+      closedAt: null,
+      borrowRecordId: null,
+      cancelReason: null,
+      readerName: readers.find((reader) => reader.id === 2)?.name,
+      readerNo: readers.find((reader) => reader.id === 2)?.studentNo,
+      bookTitle: demoBook.title,
+      bookIsbn: demoBook.isbn,
+      createdAt: dayjs().subtract(2, 'day').hour(14).minute(20).toISOString(),
+    },
+  ]
+
   const loginLogs = Array.from({ length: 9 }).map((_, index) => ({
     id: index + 1,
     username: index % 4 === 0 ? '2023001' : 'admin',
@@ -331,7 +376,7 @@ export function seedDatabase() {
   }))
 
   return {
-    version: 1,
+    version: 2,
     seededAt: new Date().toISOString(),
     categories,
     books,
@@ -339,6 +384,7 @@ export function seedDatabase() {
     users,
     records,
     penalties,
+    reservations,
     loginLogs,
     announcements: [
       {

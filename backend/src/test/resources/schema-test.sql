@@ -1,4 +1,5 @@
 -- H2（MySQL 模式）测试建表脚本：仅用于不依赖本机 MySQL 的集成测试。
+DROP TABLE IF EXISTS `reservation`;
 DROP TABLE IF EXISTS `penalty`;
 DROP TABLE IF EXISTS `borrow_record`;
 DROP TABLE IF EXISTS `login_log`;
@@ -96,6 +97,25 @@ CREATE TABLE `borrow_record` (
     `book_isbn`   VARCHAR(20),
     `created_at`  DATETIME    DEFAULT CURRENT_TIMESTAMP,
     `updated_at`  DATETIME    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE `reservation` (
+    `id`               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `reader_id`        BIGINT      NOT NULL,
+    `book_id`          BIGINT      NOT NULL,
+    `status`           VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    `requested_at`     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `ready_at`         DATETIME,
+    `expire_at`        DATETIME,
+    `closed_at`        DATETIME,
+    `borrow_record_id` BIGINT,
+    `cancel_reason`    VARCHAR(100),
+    `reader_name`      VARCHAR(50),
+    `reader_no`        VARCHAR(20),
+    `book_title`       VARCHAR(200),
+    `book_isbn`        VARCHAR(20),
+    `created_at`       DATETIME    DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME    DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE `penalty` (
