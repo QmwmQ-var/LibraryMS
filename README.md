@@ -35,6 +35,32 @@
 > 登录失败锁定使用数据库字段（`failed_attempts`、`locked_until`）实现，不引入 Redis；
 > 理由见 [`docs/核心业务说明.md`](docs/核心业务说明.md#42-为什么用数据库实现锁定不用-redis)。
 
+## 参与开发
+
+仓库：`git@github.com:QmwmQ-var/LibraryMS.git`（HTTPS：`https://github.com/QmwmQ-var/LibraryMS.git`）
+
+```bash
+git clone git@github.com:QmwmQ-var/LibraryMS.git
+cd LibraryMS
+git switch feature/catalog      # 切到自己负责的分支，见下表
+cd frontend && npm install && npm run dev
+```
+
+| 分支 | 负责人 | 范围 |
+| --- | --- | --- |
+| `feature/platform-auth` | A | 工程底座、认证、权限、布局、设计系统 |
+| `feature/catalog` | B | 图书、分类、检索 |
+| `feature/readers` | C | 读者档案、借阅证、个人中心 |
+| `feature/circulation` | D | 借阅、归还、续借、预约、罚款 |
+| `feature/analytics` | E | 仪表盘、统计、SQL、种子数据 |
+| `develop` | 轮值集成人 | 每日集成，周五验后合入 `main` |
+
+- 上手最短路径：[`CONTRIBUTING.md`](CONTRIBUTING.md)
+- 网页端设置与推送、成员首次上手、故障排查：[`docs/远程协作操作手册.md`](docs/远程协作操作手册.md)
+- 模块边界、分支规范、评审要求：[`docs/团队分工与协作.md`](docs/团队分工与协作.md)
+
+仓库已配置 `.github/CODEOWNERS`（按模块自动指派评审人）、PR/Issue 模板与 CI（后端 `mvn test` + 前端 `npm run build`）；`main`、`develop` 为保护分支，改动一律走 PR。
+
 ## 功能概览
 
 | 模块 | 读者 | 图书管理员 |
